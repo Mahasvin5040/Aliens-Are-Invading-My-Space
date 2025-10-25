@@ -4,6 +4,7 @@ const c = canvas.getContext("2d");
 const timeStep = 1.0 / 60.0;
 const asteroidSprite = document.getElementById("asteroid");
 const alienSprite = document.getElementById("alien");
+const enemyLaser = document.getElementById("enemyLaser");
 
 canvas.width = window.innerWidth - 50.0;
 canvas.height = window.innerHeight - 100.0;
@@ -11,14 +12,16 @@ canvas.height = window.innerHeight - 100.0;
 let alienTimer = 0;
 let asteroidTimer = 0;
 
+
 const numOfAsteroids = 5;// Change this value to change the # of balls
 const numOfAliens = 3;
 
-const asteroidSize = 50;
+const asteroidSize = 30;
 const alienSize = 50;
-
 const speed = 200;
+
 const objects = []; // array for balls
+
 const asteroidSpawnTime = 2; // in seconds
 const alienSpawnTime = 4;
 
@@ -29,6 +32,8 @@ function createObject(collisionFlag, sprite, sizex, sizey, posx, posy, velx, vel
     this.size = {x : sizex, y: sizey};
     this.pos = {x: posx, y: posy};
     this.vel = {x:velx, y:vely};
+    this.shootingTimer = 0;
+    this.alienShootTime = 1;
 }
 
 //Creates balls and populates array
@@ -46,6 +51,11 @@ function createAliens(){
         const object = new createObject(0, alienSprite, alienSize, alienSize*2, getRandomInt(0, canvas.width), -alienSize, getRandomInt(-speed, speed), 15);
         objects.push(object);
     }
+}
+
+function createLaser(enemy){
+    const object = new createObject(0, enemyLaser, 5, 15, enemy.pos.x+enemy.size.x/2, enemy.pos.y+enemy.size.y/2, 0, 70);
+    objects.push(object);
 }
 
 let arrLength = numOfAsteroids;
@@ -73,16 +83,29 @@ function draw(){
 
     }
 }
+function enemyShot(){
+    for(let i = 0; i < arrLength; i++){
+        if(objects[i].sprite == alienSprite){
+            objects[i].shootingTimer++;
+        }
+        if(objects[i].shootingTimer > 60 * objects[i].alienShootTime){
+            createLaser(objects[i]);
+            arrLength++;
+            objects[i].shootingTimer = 0;
+            objects[i].alienShootTime *= .98;
+        }
+    }
+}
 
 function update(){
-
+    enemyShot();
     if(asteroidTimer > 60 * asteroidSpawnTime){
         createAsteroids();
         arrLength = objects.length;
         asteroidTimer = 0;
     }
 
-    if(alienTimer > 60 * asteroidSpawnTime){
+    if(alienTimer > 60 * alienSpawnTime){
         createAliens();
         arrLength = objects.length;
         alienTimer = 0;
@@ -94,7 +117,6 @@ function update(){
     requestAnimationFrame(update);
     asteroidTimer++;
     alienTimer++;
-
 }
 
 //updates the position of the ball
