@@ -1,30 +1,106 @@
 const canvas = document.getElementById("myCanvas");
 const c = canvas.getContext("2d");
 
-const timeStep = 1.0 / 60.0;
+let timeStep = 1.0 / 60.0;
 const asteroidSprite = document.getElementById("asteroid");
 const alienSprite = document.getElementById("alien");
 const enemyLaser = document.getElementById("enemyLaser");
+const friendlyLaser = document.getElementById("friendlyLaser");
+const playerSprite = document.getElementById("player");
 
 canvas.width = window.innerWidth - 50.0;
 canvas.height = window.innerHeight - 100.0;
+console.log(canvas.height);
+console.log(canvas.width);
+
+let elapsedSeconds = 0;
+let elapsedMinutes = 0;
+let secondsCounter = 0;
+const displayTime = document.getElementById('time')
+
+function updateTimerDisplay() {
+    const minutes = Math.floor(elapsedSeconds / 60);
+    const seconds = elapsedSeconds % 60;
+
+    // Format with leading zeros
+    const formattedMinutes = String(minutes).padStart(2, '0');
+    const formattedSeconds = String(seconds).padStart(2, '0');
+
+    const timerDisplay = document.getElementById('time');
+    timerDisplay.textContent = `${formattedMinutes}: ${formattedSeconds}`;
+}
 
 let alienTimer = 0;
 let asteroidTimer = 0;
-
+let playerBulletSpeed = -190;
 
 const numOfAsteroids = 5;// Change this value to change the # of balls
 const numOfAliens = 3;
 
 const asteroidSize = 30;
-const alienSize = 50;
-const speed = 200;
+const alienSizex = 50;
+const alienSizey = 100;
+const playerSizex = 50;
+const playerSizey = 65;
+
+const asteroidSpeed = 200;
+const alienSpeed = 200;
 
 const objects = []; // array for balls
 
 const asteroidSpawnTime = 2; // in seconds
 const alienSpawnTime = 4;
 
+const player = {
+    sprite : playerSprite,
+    size : {x : playerSizex, y : playerSizey},
+    pos : {x : canvas.width/2, y : canvas.height - playerSizey},
+    shootingTimer : 0,
+    playerShootingTime : 1/4,
+    health : 5,
+    speed : 5,
+};
+
+let movingLeft = false;
+let movingRight = false;
+let movingUp = false;
+let movingDown = false;
+document.addEventListener("keydown", (e) => {
+    if (e.key == "ArrowLeft" || e.key == "A" || e.key == "a") {
+        movingLeft = true;
+    }
+    if (e.key == "ArrowRight" || e.key == "D" || e.key == "d") {
+        movingRight = true;
+    }
+
+    if (e.key == "ArrowUp" || e.key == "W" || e.key == "w") {
+        movingUp = true;
+        //playerBulletSpeed -= 2*player.speed;
+
+    }
+    if (e.key == "ArrowDown" || e.key == "S" || e.key == "s") {
+        movingDown = true;
+    }
+});
+
+document.addEventListener("keyup", (e) => {
+    if (e.key == "ArrowLeft" || e.key == "A" || e.key == "a" || player.pos.x <= 0) {
+        movingLeft = false;
+    }
+
+    if (e.key == "ArrowRight" || e.key == "D" || e.key == "d" || player.pos.x >= canvas.width - player.pos.x) {
+        movingRight = false;
+    }
+
+    if (e.key == "ArrowUp" || e.key == "W" || e.key == "w" || player.pos.y <= 0) {
+        movingUp = false;
+        //playerBulletSpeed = -70;
+    }
+
+    if (e.key == "ArrowDown" || e.key == "S" || e.key == "s" || player.pos.y >= canvas.height- player.pos.y) {
+        movingDown = false;
+    }
+});
 
 function createObject(collisionFlag, sprite, sizex, sizey, posx, posy, velx, vely){
     this.collisionFlag = collisionFlag;
@@ -33,14 +109,14 @@ function createObject(collisionFlag, sprite, sizex, sizey, posx, posy, velx, vel
     this.pos = {x: posx, y: posy};
     this.vel = {x:velx, y:vely};
     this.shootingTimer = 0;
-    this.alienShootTime = 1;
+    this.alienShootTime = 1.5;
 }
 
 //Creates balls and populates array
 function createAsteroids(){
     for(let i = 0; i < numOfAsteroids; i++){
         //creates the object
-        const object = new createObject(1, asteroidSprite, asteroidSize, asteroidSize, getRandomInt(0, canvas.width), -asteroidSize, getRandomInt(-speed, speed), 50);
+        const object = new createObject(1, asteroidSprite, asteroidSize, asteroidSize, getRandomInt(0, canvas.width), -asteroidSize, getRandomInt(-asteroidSpeed, asteroidSpeed), 50);
         objects.push(object);
     }
 }
@@ -48,13 +124,18 @@ function createAsteroids(){
 function createAliens(){
     for(let i = 0; i < numOfAliens; i++){
         //creates the object
-        const object = new createObject(0, alienSprite, alienSize, alienSize*2, getRandomInt(0, canvas.width), -alienSize, getRandomInt(-speed, speed), 15);
+        const object = new createObject(0, alienSprite, alienSizex, alienSizey, getRandomInt(0, canvas.width), -alienSizey, getRandomInt(-alienSpeed, alienSpeed), 15);
         objects.push(object);
     }
 }
 
-function createLaser(enemy){
+function createEnemyLaser(enemy){
     const object = new createObject(0, enemyLaser, 5, 15, enemy.pos.x+enemy.size.x/2, enemy.pos.y+enemy.size.y/2, 0, 70);
+    objects.push(object);
+}
+
+function createPlayerLaser(player){
+    const object = new createObject(0, friendlyLaser, 8, 20, player.pos.x+player.size.x/2-4, player.pos.y, 0, playerBulletSpeed);
     objects.push(object);
 }
 
@@ -66,9 +147,72 @@ function getRandomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+function detectDmg(){
+    let center = {x : player.pos.x + player.size.x/2, y : player.pos.y + player.size.y/2};
+    let r = {x : player.size.x/4, y : player.size.y/4};
+
+    for(let i = 0; i < arrLength; i++){
+        if(objects[i].sprite != friendlyLaser){
+        let obj = objects[i];
+        let objectCenter = {x : obj.pos.x + obj.size.x/2, y : obj.pos.y + obj.size.y/2};
+        let distx = Math.abs(center.x - objectCenter.x);
+        let disty = Math.abs(center.y - objectCenter.y);
+        if(distx <= r.x && disty <= r.y){
+            player.health--;
+            objects.splice(i,1);
+            arrLength--;
+            console.log(player.health);
+        }
+
+        }
+    }
+}
+
+function playerHit(){
+    let obj1Size = {x : 0, y : 0};
+    let obj2Size = {x : 0, y : 0};
+
+    let distx = 0;
+    let disty = 0;
+    let r = {x : 0, y : 0};
+
+    let obj1Cent = {x : 0, y:0};
+    let obj2Cent = {x : 0, y:0};
+
+    for(let i = 0; i < arrLength -1; i++){
+        for(let j = i+1; j < arrLength; j++){
+            if((objects[i].sprite != friendlyLaser && objects[j].sprite == friendlyLaser) || (objects[i].sprite == friendlyLaser && objects[j].sprite != friendlyLaser)){
+                obj1Size.x = objects[i].size.x;
+                obj1Size.y = objects[i].size.y;
+                obj2Size.x = objects[j].size.x;
+                obj2Size.y = objects[j].size.y;
+
+                obj1Cent.x = obj1Size.x/2 + objects[i].pos.x;
+                obj2Cent.x = obj2Size.x/2 + objects[j].pos.x;
+
+                obj1Cent.y = obj1Size.y/2 + objects[i].pos.y;
+                obj2Cent.y = obj2Size.y/2 + objects[j].pos.y;
+
+                distx = Math.abs(obj1Cent.x - obj2Cent.x);
+                disty = Math.abs(obj1Cent.y - obj2Cent.y);
+
+                r.x = obj1Size.x/2;
+                r.y = obj1Size.y/2;
+
+                if(distx <= r.x && disty <= r.y){
+                    objects.splice(j,1);
+                    arrLength--;
+                    objects.splice(i,1);
+                    arrLength--;
+                    //console.log("idk");
+                }
+            }
+        }
+    }
+}
+
 function draw(){
     c.clearRect(0, 0, canvas.width, canvas.height);
-
     for(let i = 0; i < arrLength; i++){
         obj = objects[i];
 
@@ -80,16 +224,17 @@ function draw(){
         c.fill();
         */
         c.drawImage(obj.sprite, obj.pos.x, obj.pos.y, obj.size.x, obj.size.y);
-
+        c.drawImage(player.sprite, player.pos.x, player.pos.y, player.size.x, player.size.y);
     }
+    //c.drawImage(player.sprite, player.pos.x, player.pos.y, player.size.x, player.size.y);
 }
 function enemyShot(){
     for(let i = 0; i < arrLength; i++){
         if(objects[i].sprite == alienSprite){
             objects[i].shootingTimer++;
         }
-        if(objects[i].shootingTimer > 60 * objects[i].alienShootTime){
-            createLaser(objects[i]);
+        if(objects[i].shootingTimer > objects[i].alienShootTime / timeStep){
+            createEnemyLaser(objects[i]);
             arrLength++;
             objects[i].shootingTimer = 0;
             objects[i].alienShootTime *= .98;
@@ -97,26 +242,13 @@ function enemyShot(){
     }
 }
 
-function update(){
-    enemyShot();
-    if(asteroidTimer > 60 * asteroidSpawnTime){
-        createAsteroids();
-        arrLength = objects.length;
-        asteroidTimer = 0;
+function playerShot(){
+    player.shootingTimer++;
+    if(player.shootingTimer > player.playerShootingTime / timeStep){
+        createPlayerLaser(player);
+        arrLength++;
+        player.shootingTimer = 0;
     }
-
-    if(alienTimer > 60 * alienSpawnTime){
-        createAliens();
-        arrLength = objects.length;
-        alienTimer = 0;
-    }
-
-    calculate();
-    collision();
-    draw();
-    requestAnimationFrame(update);
-    asteroidTimer++;
-    alienTimer++;
 }
 
 //updates the position of the ball
@@ -148,12 +280,16 @@ function calculate(){
         }
 
         if(ball.pos.y < LBY){
-            ball.pos.y = LBY;
-            ball.vel.y *= -1.0;
+            if(ball.sprite != friendlyLaser){
+                ball.pos.y = LBY;
+                ball.vel.y *= -1.0;
+            }else{
+                //console.log(ball.pos.y);
+                objects.splice(i,1);
+                arrLength--;
+            }
         }
     }
-
-
 }
 
 function collision(){
@@ -208,5 +344,66 @@ function collision(){
     }
 }
 
+function movement(){
+    if(movingLeft && player.pos.x >= 0) {
+        player.pos.x -= player.speed;
+    }
+
+    if(movingRight && player.pos.x <= canvas.width - player.size.x) {
+        player.pos.x += player.speed;
+    }
+
+    if(movingUp && player.pos.y >= 0) {
+        player.pos.y -= player.speed;
+    }
+
+    if(movingDown && player.pos.y <= canvas.height - player.size.y) {
+        player.pos.y += player.speed/1.5;
+    }
+}
+
+function update(){
+    if(player.health <= 0){
+        return;
+    }
+
+    // spawns asteroids in waves
+    if(asteroidTimer > asteroidSpawnTime / timeStep){
+        createAsteroids();
+        arrLength = objects.length;
+        asteroidTimer = 0;
+    }
+
+    //spawns aliens in waves
+    if(alienTimer > alienSpawnTime / timeStep){
+        createAliens();
+        arrLength = objects.length;
+        alienTimer = 0;
+    }
+
+    //timer
+    if(secondsCounter == 60){
+        elapsedSeconds++;
+        secondsCounter = 0;
+    }
+    movement();
+    playerShot();
+    enemyShot();
+    detectDmg();
+    playerHit();
+
+    calculate(); // calculates position & collision with walls
+    collision(); // collision between asteroids
+    draw();
+    requestAnimationFrame(update);
+
+    asteroidTimer++;
+    alienTimer++;
+
+    secondsCounter++;
+    updateTimerDisplay();
+}
+
+updateTimerDisplay();
 createAsteroids();
 update();
