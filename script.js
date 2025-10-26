@@ -3,62 +3,54 @@ const c = canvas.getContext("2d");
 
 const timeStep = 1.0 / 60.0;
 const asteroidSprite = document.getElementById("asteroid");
-const alienSprite = document.getElementById("alien");
-const enemyLaser = document.getElementById("enemyLaser");
 
 canvas.width = window.innerWidth - 50.0;
-canvas.height = window.innerHeight - 100.0;
+canvas.height = window.innerHeight - 50.0;
 
-let alienTimer = 0;
+
 let asteroidTimer = 0;
-
-
-const numOfAsteroids = 5;// Change this value to change the # of balls
-const numOfAliens = 3;
-
-const asteroidSize = 30;
-const alienSize = 50;
+const numOfBalls = 2; // Change this value to change the # of balls
+const ballSize = 50;
 const speed = 200;
-
 const objects = []; // array for balls
-
 const asteroidSpawnTime = 2; // in seconds
-const alienSpawnTime = 4;
+
+let elapsedSeconds = 0;
+let elapsedMinutes = 0;
+let secondsCounter = 0;
+const displayTime = document.getElementById('time')
+
+function updateTimerDisplay() {
+    const minutes = Math.floor(elapsedSeconds / 60);
+    const seconds = elapsedSeconds % 60;
+                
+    // Format with leading zeros
+    const formattedMinutes = String(minutes).padStart(2, '0');
+    const formattedSeconds = String(seconds).padStart(2, '0');
+
+    const timerDisplay = document.getElementById('time');
+    timerDisplay.textContent = `${formattedMinutes}: ${formattedSeconds}`;
+}
 
 
-function createObject(collisionFlag, sprite, sizex, sizey, posx, posy, velx, vely){
+function createObject(collisionFlag, sprite, size, posx, posy, velx, vely){
     this.collisionFlag = collisionFlag;
     this.sprite = sprite;
-    this.size = {x : sizex, y: sizey};
+    this.size = size;
     this.pos = {x: posx, y: posy};
     this.vel = {x:velx, y:vely};
-    this.shootingTimer = 0;
-    this.alienShootTime = 1;
 }
 
 //Creates balls and populates array
 function createAsteroids(){
-    for(let i = 0; i < numOfAsteroids; i++){
+    for(let i = 0; i < numOfBalls; i++){
         //creates the object
-        const object = new createObject(1, asteroidSprite, asteroidSize, asteroidSize, getRandomInt(0, canvas.width), -asteroidSize, getRandomInt(-speed, speed), 50);
+        const object = new createObject(1, asteroidSprite, ballSize, getRandomInt(0, canvas.width), -ballSize, getRandomInt(-speed, speed), 50);
         objects.push(object);
     }
 }
 
-function createAliens(){
-    for(let i = 0; i < numOfAliens; i++){
-        //creates the object
-        const object = new createObject(0, alienSprite, alienSize, alienSize*2, getRandomInt(0, canvas.width), -alienSize, getRandomInt(-speed, speed), 15);
-        objects.push(object);
-    }
-}
-
-function createLaser(enemy){
-    const object = new createObject(0, enemyLaser, 5, 15, enemy.pos.x+enemy.size.x/2, enemy.pos.y+enemy.size.y/2, 0, 70);
-    objects.push(object);
-}
-
-let arrLength = numOfAsteroids;
+let arrLength = numOfBalls;
 
 function getRandomInt(min, max) {
     min = Math.ceil(min);
@@ -79,44 +71,32 @@ function draw(){
         c.closePath();
         c.fill();
         */
-        c.drawImage(obj.sprite, obj.pos.x, obj.pos.y, obj.size.x, obj.size.y);
+        c.drawImage(obj.sprite, obj.pos.x, obj.pos.y, obj.size, obj.size);
 
-    }
-}
-function enemyShot(){
-    for(let i = 0; i < arrLength; i++){
-        if(objects[i].sprite == alienSprite){
-            objects[i].shootingTimer++;
-        }
-        if(objects[i].shootingTimer > 60 * objects[i].alienShootTime){
-            createLaser(objects[i]);
-            arrLength++;
-            objects[i].shootingTimer = 0;
-            objects[i].alienShootTime *= .98;
-        }
     }
 }
 
 function update(){
-    enemyShot();
+    if(secondsCounter == 60){
+        elapsedSeconds++;
+        secondsCounter = 0;
+    }
     if(asteroidTimer > 60 * asteroidSpawnTime){
         createAsteroids();
-        arrLength = objects.length;
         asteroidTimer = 0;
-    }
-
-    if(alienTimer > 60 * alienSpawnTime){
-        createAliens();
-        arrLength = objects.length;
-        alienTimer = 0;
     }
 
     calculate();
     collision();
     draw();
     requestAnimationFrame(update);
+
+    arrLength = objects.length;
     asteroidTimer++;
-    alienTimer++;
+    secondsCounter++;
+
+    updateTimerDisplay();
+
 }
 
 //updates the position of the ball
@@ -126,11 +106,11 @@ function calculate(){
 
         ball.pos.x += ball.vel.x * timeStep;
         ball.pos.y += ball.vel.y * timeStep;
-        let UBX = canvas.width - ball.size.x;
+        let UBX = canvas.width - ball.size;
         let LBX = 0;
 
-        let UBY = canvas.height - ball.size.y;
-        let LBY = -ball.size.y;
+        let UBY = canvas.height - ball.size;
+        let LBY = -ballSize;
 
         if(ball.pos.x > UBX){
             ball.pos.x = UBX;
@@ -166,8 +146,8 @@ function collision(){
             let disty1 = ball1.pos.y - ball2.pos.y;
 
             if(ball1.collisionFlag == 1 && ball2.collisionFlag==1){
-                if(Math.abs(distx1) < asteroidSize && Math.abs(disty1) < asteroidSize){
-                    if(Math.abs(distx1) < asteroidSize && Math.abs(distx1) > Math.abs(disty1)){
+                if(Math.abs(distx1) < ballSize && Math.abs(disty1) < ballSize){
+                    if(Math.abs(distx1) < ballSize && Math.abs(distx1) > Math.abs(disty1)){
                         //console.log("x");
                         ball1.vel.x *= -1;
                         ball2.vel.x *= -1;
@@ -175,16 +155,16 @@ function collision(){
                         if(distx1 < 0){
                             let cent = ball1.pos.x + Math.abs(distx1/2.0);
                             //console.log(distx1, cent );
-                            ball1.pos.x = cent - asteroidSize/2.0;
-                            ball2.pos.x = cent + asteroidSize/2.0;
+                            ball1.pos.x = cent - ballSize/2.0;
+                            ball2.pos.x = cent + ballSize/2.0;
                         }else if(distx1 > 0){
                             let cent = ball2.pos.x + Math.abs(distx1/2.0);
                             //console.log(distx1, cent );
-                            ball1.pos.x = cent + asteroidSize/2.0;
-                            ball2.pos.x = cent - asteroidSize/2.0;
+                            ball1.pos.x = cent + ballSize/2.0;
+                            ball2.pos.x = cent - ballSize/2.0;
                         }
                     }
-                    else if(Math.abs(disty1) < asteroidSize && Math.abs(distx1) < Math.abs(disty1)){
+                    else if(Math.abs(disty1) < ballSize && Math.abs(distx1) < Math.abs(disty1)){
                         //console.log("y");
                         ball1.vel.y *= -1;
                         ball2.vel.y *= -1;
@@ -192,13 +172,13 @@ function collision(){
                         if(disty1 < 0){
                             let cent = ball1.pos.y + Math.abs(disty1/2.0);
                             //console.log(disty1, cent );
-                            ball1.pos.y = cent - asteroidSize/2.0;
-                            ball2.pos.y = cent + asteroidSize/2.0;
+                            ball1.pos.y = cent - ballSize/2.0;
+                            ball2.pos.y = cent + ballSize/2.0;
                         }else if(disty1 > 0){
                             let cent = ball2.pos.y + Math.abs(disty1/2.0);
                             //console.log(disty1, cent );
-                            ball1.pos.y = cent + asteroidSize/2.0;
-                            ball2.pos.y = cent - asteroidSize/2.0;
+                            ball1.pos.y = cent + ballSize/2.0;
+                            ball2.pos.y = cent - ballSize/2.0;
                         }
                     }
                 }
@@ -210,3 +190,4 @@ function collision(){
 
 createAsteroids();
 update();
+updateTimerDisplay();
