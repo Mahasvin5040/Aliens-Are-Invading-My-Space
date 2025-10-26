@@ -4,10 +4,41 @@
     <head>
         <title>Aliens Are Invading My Space! >:(</title>
         <style>
+
+            body, h1, h2, h3, h4, p, ul, ol, li, figure, figcaption, blockquote, dl, dd {
+                margin: 0;
+                padding: 0;
+            }
+
             body{
                 background-image: url("sky.jpg");
                 background-size: cover;
+                padding: 25px;
             }
+
+            .flex-containter{
+                display: flex;
+                justify-content: space-between;
+                flex: 1;
+                padding: 2px 300px;
+                color: white;
+                font-size : 24px;
+                font-weight: bold;
+                font-family: "Comic Sans MS", "Comic Sans";
+
+
+            }
+
+            .left-aligned{
+                text-align: left;
+            }
+            .center-aligned{
+                text-align: center;
+            }
+            .right-aligned{
+                text-align:right;
+            }
+
         </style>
 
     </head>
@@ -15,7 +46,29 @@
     <body>
 
         <center><canvas id="myCanvas" style="border:2px solid #ffffff;"></center>
-        <center><h1 id="time" style="color:#ffffff">00:00</h1></center>
+
+
+
+        <div class="flex-containter">
+            <div class="left-aligned">
+                <p id="hp" >HP: 5</p>
+            </div>
+
+            <div class="center-aligned">
+                <p id="time" >00:00</p>
+            </div>
+
+            <div class="right-aligned">
+                <p id="score">Score: 000</p>
+            </div>
+        </div>
+
+
+        <!-- <h1 id="score" style="text-align: right;display: inline;color:#ffffff">Score: 000</h1>
+        <p id="hp" style="text-align: right;display: inline;color:#ffffff">HP: 5</p>
+        <p id="time" style="text-align: right;display: inline;color:#ffffff">00:00</p>
+        <p id="score" style="text-align: right;display: inline;color:#ffffff">Score: 000</p> -->
+
         <img id = "asteroid" src="asteroid.png" style="display:none;">
         <img id = "alien" src="saucer.png" style="display:none;">
         <img id = "enemyLaser" src="enemyLaser.png" style="display:none;">
